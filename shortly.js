@@ -2,6 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var sqlite3 = require('sqlite3');
 
 
 var db = require('./app/config');
@@ -46,7 +47,7 @@ function(req, res) {
 
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
-    return res.send(404);
+    return res.status(404).send('Not a valid url');
   }
 
   new Link({ url: uri }).fetch().then(function(found) {
@@ -56,7 +57,7 @@ function(req, res) {
       util.getUrlTitle(uri, function(err, title) {
         if (err) {
           console.log('Error reading URL heading: ', err);
-          return res.send(404);
+          return res.status(404).send('Error reading URL heading');
         }
 
         Links.create({
