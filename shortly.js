@@ -2,8 +2,9 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-// var cookieParser = require('cookie-parser');
-// var expressSession = require('express-session');
+var session = require('express-session');
+var cookieParser = require('cookie-parser');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -23,6 +24,8 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+app.use(cookieParser());
+app.use(session({secret: 'cool cat'}));
 
 // if they aren't logged in, redirect to login, otherwise
 // render index with access to a
@@ -38,7 +41,12 @@ app.get('/login', function(req, res) {
 
 app.get('/create', 
 function(req, res) {
+  if (req.session.username) {
+    console.log('you have a session username, ', req.session.username);
+    console.log('and your session id is ', req.session.sid);
+  }
   res.render('index');
+
 });
 
 app.get('/signup', 
@@ -106,13 +114,49 @@ app.post('/signup', function(req, res) {
 // login
 // Todo: if the password matches given a username, log in
 app.post('/login', function(req, res) {
+  // initialize session
   new User({username: req.body.username})
   .fetch()
   .then(function(found) {
+    // if found, set up session and redirect to create
+    if (found) {
+      console.log('found!');
+      var session = req.session;
+      console.log(found);
+
+      bcrypt.compare(req.body.password, found.attributes.password, function(err, result) {
+        if (err) {
+          console.log(err);
+          res.redirect('/login');
+        } else if (result) {
+          console.log(result);
+          var tenSecs = 10000;
+
+          req.session.cookie.expires = new Date(Date.now() + tenSecs);
+          req.session.cookie.maxAge = tenSecs;
+
+
+
+          session.username = req.body.username;
+          session.password = req.body.password; // we don't want to store password
+          session.sid = req.sessionID;
+          res.redirect('/create');
+        } else {
+          res.redirect('/login');
+        }
+      });
+
+
+    } else {
+      console.log('not found');
+      // otherwise, redirect to login
+      res.redirect('/login');
+      
+    }
     //logic that checks db
-    console.log(found);
+
   });
-  // end response
+  // res.redirect('/create');
 });
 
 
