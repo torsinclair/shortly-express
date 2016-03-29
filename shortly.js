@@ -2,7 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-var sqlite3 = require('sqlite3');
+// var cookieParser = require('cookie-parser');
+// var expressSession = require('express-session');
 
 
 var db = require('./app/config');
@@ -23,15 +24,26 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
-
+// if they aren't logged in, redirect to login, otherwise
+// render index with access to a
 app.get('/', 
 function(req, res) {
-  res.render('index');
+  // res.render('index');
+  res.redirect('/login');
+});
+
+app.get('/login', function(req, res) {
+  res.render('login');
 });
 
 app.get('/create', 
 function(req, res) {
   res.render('index');
+});
+
+app.get('/signup', 
+function(req, res) {
+  res.render('signup');
 });
 
 app.get('/links', 
@@ -45,7 +57,11 @@ app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
+  // If user isn't logged and tries creating a link
+  // Redirect to login
   if (!util.isValidUrl(uri)) {
+      
+
     console.log('Not a valid url: ', uri);
     return res.status(404).send('Not a valid url');
   }
@@ -77,7 +93,36 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+// signup [post/signup]
+app.post('/signup', function(req, res) {
+  new User({username: req.body.username, password: req.body.password})
+  .save()
+  .then(function(model) {
+    res.redirect('/create');
+  });
 
+});
+
+// login
+// Todo: if the password matches given a username, log in
+app.post('/login', function(req, res) {
+  new User({username: req.body.username})
+  .fetch()
+  .then(function(found) {
+    //logic that checks db
+    console.log(found);
+  });
+  // end response
+});
+
+
+// Todos:
+// When we sign up --- log a person in -- give them some token/session id/cookie
+// when they log in within some period of time, give them a token/session id/cookie
+
+// know about each user's token, store it somewhere
+
+// write a function that tests whether a user is logged in
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
