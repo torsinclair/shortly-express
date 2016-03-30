@@ -5,7 +5,7 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 var cookieParser = require('cookie-parser');
 var bcrypt = require('bcrypt-nodejs');
-
+var checkUser = require('./checkUser');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -26,6 +26,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 app.use(cookieParser());
 app.use(session({secret: 'cool cat'}));
+app.use(checkUser);
 
 // if they aren't logged in, redirect to login, otherwise
 // render index with access to a
@@ -36,14 +37,18 @@ function(req, res) {
 });
 
 app.get('/login', function(req, res) {
+  // req.session.sid = null;
   res.render('login');
 });
 
 app.get('/create', 
 function(req, res) {
+
   if (req.session.username) {
     console.log('you have a session username, ', req.session.username);
     console.log('and your session id is ', req.session.sid);
+
+
   }
   res.render('index');
 
@@ -52,6 +57,12 @@ function(req, res) {
 app.get('/signup', 
 function(req, res) {
   res.render('signup');
+});
+
+app.get('/logout', function(req, res) {
+  console.log('triggered');
+  req.session.sid = null;
+  res.redirect('/login');
 });
 
 app.get('/links', 
@@ -87,7 +98,8 @@ function(req, res) {
         Links.create({
           url: uri,
           title: title,
-          baseUrl: req.headers.origin
+          baseUrl: req.headers.origin,
+          username: req.session.username
         })
         .then(function(newLink) {
           res.send(200, newLink);
@@ -107,6 +119,9 @@ app.post('/signup', function(req, res) {
   .save()
   .then(function(model) {
     res.redirect('/create');
+  })
+  .catch(function(err) { // if error (creating account with username already in database)
+    res.redirect('/signup'); // redirect back to signup
   });
 
 });
@@ -129,17 +144,18 @@ app.post('/login', function(req, res) {
           console.log(err);
           res.redirect('/login');
         } else if (result) {
-          console.log(result);
-          var tenSecs = 10000;
+          // console.log(result);
+          // var tenSecs = 10000;
 
-          req.session.cookie.expires = new Date(Date.now() + tenSecs);
-          req.session.cookie.maxAge = tenSecs;
+          // req.session.cookie.expires = new Date(Date.now() + tenSecs);
+          // req.session.cookie.maxAge = tenSecs;
 
 
 
           session.username = req.body.username;
           session.password = req.body.password; // we don't want to store password
           session.sid = req.sessionID;
+          
           res.redirect('/create');
         } else {
           res.redirect('/login');
